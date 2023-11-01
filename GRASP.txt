@@ -1,0 +1,226 @@
+### Equipo 1
+#### Constantino Herrera Didier Iván
+#### Frías Teodocio Brenda Ivette
+#### Matías Ramírez Jonathan Erick
+#### Peña Bernandino Andrea Esmeralda
+#### Sandoval Ortega Diana Laura
+
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Oct 24 15:12:15 2023
+
+@author: ivan0
+"""
+
+
+######## Pregunta 1.
+
+# Los elementos pueden ser las aristas que conectan a las ciudades, o bien, los nodos que conectan 
+# las ciudades.
+
+######## Pregunta 2.
+
+# La función miope utilizada será escoger la arista de menor costo (distancia) que conecta 
+# una ciudad c_i a las demás ciudades.
+
+import numpy as np
+import random
+
+# FUNCIÓN MIOPE
+
+def funcion_miope(i,dist,ciudades,c):
+    dic = {}
+    keys = []
+    cd = c.copy()
+    cd.remove(i)
+    index_cid = ciudades.index(i)
+    # Creamos un diccionario con los costos miopes
+    for j in cd:
+        keys = []
+        index_dist = ciudades.index(j)
+        keys.append(j)
+        costo = dist[index_cid][index_dist]
+        dic[keys[0]] = costo
+    # Guardamos la arista cuya distancia es menor
+    min_k, min_v = min(dic.items(), key=lambda x: x[1])
+    ciudad_prox = min_k
+    c_min = {i : min_v}
+    return ciudad_prox,c_min
+
+######## Pregunta 3.
+
+# CONSTRUCCIÓN C
+
+def construccion_c(dist,ciudades):
+    x = []
+    c = ciudades.copy()
+    k = random.randint(1, len(c))
+    # Mientras no se pasen por todas las ciudades seguirá construyendo la solución
+    while len(c) > 0:
+        if len(c) == 1:
+            x.append(c[0])
+            break
+        rcl2 = {}
+        
+        # Calculamos el costo miope de cada elemento de c
+        for i in c:
+
+            pre_rcl1, pre_rcl2 = funcion_miope(i, dist, ciudades, c)
+            rcl = {**rcl2,**pre_rcl2}
+            rcl2 = rcl
+
+        # De la RCL seleccionamos k elementos cuyo costo son los k-ésimos menores   
+        l = [item for item in sorted(rcl, key=rcl.get)][0:k]
+        l_tour = np.random.choice(l)
+        
+        # Construimos la solución
+        x.append(l_tour)
+        # Actualizamos las ciudades
+        c.remove(l_tour)
+
+        
+    return x
+
+######## Pregunta 4.
+
+# VECINDADES
+
+def vecindades(tour):
+    n = len(tour)
+    v_tours= []
+    for i in range(n-1):
+        for j in range(i+1,n): #Puede ser n-1
+            # Intercambiamos dos ciudades de posicíon
+            ctour = tour.copy()
+            prior1 = ctour[i]
+            prior2 = ctour[j]
+            ctour[i] = prior2
+            ctour[j] = prior1
+            v_tours.append(ctour)
+            
+    return v_tours
+
+
+# COSTO DEL CICLO HAMILTONIANO
+
+def costo_tour(tour, dist, ciudades):
+    costo = 0
+    for i in range(len(tour)-1):
+        
+        # Calculamos el costo de todo el ciclo hamiltoniano
+        j = ciudades.index(tour[i])
+        k = ciudades.index(tour[i+1])
+        costo += dist[j][k]
+        
+        # Agregamos el costo de regresar a la ciudad de donde se partió el recorrido        
+        if i == len(tour)-2:
+            p = ciudades.index(tour[0])
+            costo = costo + dist [k][p]
+
+            
+    return costo
+
+# BÚSQUEDA LOCAL 
+
+def busqueda_local(tour,dist,ciudades):
+    t_costo = []
+    tour_o = tour.copy()
+    costo_o = costo_tour(tour_o,dist,ciudades)
+
+    k = 0
+    
+    
+    while k < 50 or tour != tour_o:
+        t_costo = []
+        v_tours = vecindades(tour_o)
+        # Calculamos los vecinos
+        for i in range(len(v_tours)):
+            v_costo = costo_tour(v_tours[i],dist,ciudades) 
+    
+            t_costo.append(v_costo)
+    
+        # Si entre los vecinos no se encuentra una mejor solución se regresa el ciclo inicial
+        if min(t_costo) >= costo_o:
+            return tour_o
+        # Si se encuentra una mejor, el vecino se convierte en la nueva solución y se procede a buscar sus vecinos
+        else: 
+            l_costo = t_costo.index(min(t_costo))
+            tour_o = v_tours[l_costo]
+            costo_o = costo_tour(tour_o,dist,ciudades)
+            k += 1  
+        
+    return tour
+
+
+######## Pregunta 5.
+
+# GRASP
+
+def grasp(i_max,dist,ciudades):
+    sol = float("inf")
+    for i in range(i_max):
+        # Hacemos varias iteraciones
+        # Primero se construye una solución inicial
+        x = construccion_c(dist,ciudades)
+        # Después se realiza la búsqueda local
+        x = busqueda_local(x,dist,ciudades)
+        x1 = costo_tour(x,dist,ciudades)
+        # Se evalúa si es una mejor solución 
+        if  x1 < sol:
+            sol = x1
+            x2 = x
+    return x2
+            
+
+
+######## Pregunta 6.
+
+# Primer parámetro: número de iteraciones
+# Segundo parámetro: distancias entre ciudades
+# Tercer parámetro: ciudades a recorrer
+
+dist = [[1,1,2,3,7],
+        [1,1,6,5,5],
+        [2,6,1,4,9],
+        [3,5,4,1,11],
+        [7,5,9,11,1]]
+
+ciudades = [1,2,3,4,5]
+
+np.random.seed(0)
+print("La ruta optima es", grasp(3,dist,ciudades))
+
+
+dist2 = [[5,1,1,4,7],
+        [1,6,1,4,5],
+        [2,6,11,14,29],
+        [2,2,3,8,11],
+        [3,5,9,9,11]]
+
+dist = [[5,1,1,4,7,27,1],
+        [1,6,1,4,25,3,54],
+        [2,6,11,14,29,2,4],
+        [2,2,3,8,1,11,22],
+        [3,5,9,9,11,10,9]]
+
+dist = [[105,13,21,34,57,27,12,33],
+        [14,61,12,42,25,36,54,29],
+        [29,61,114,14,29,22,49,88],
+        [22,22,33,88,11,11,22,55],
+        [31,54,19,99,11,10,58,27],
+        [14,12,9,19,1,29,43,12]]
+
+dist = [[11,10,9,15],
+        [11,3,12,18],
+        [10,3,11,17],
+        [9,12,11,8],
+        [15,18,17,8]]
+
+dist = [[11,11,12,13,17],
+        [11,11,16,15,15],
+        [12,16,11,14,19],
+        [13,15,14,11,21],
+        [17,15,19,21,11]]
+
+## Su aplicación es más rápida que los métodos tradicionales para dar una solución (aunque estas son intancias bastante pequeñas). 
+## GRASP es un método constructivo por lo que es mejor que el método gloton por si solo.
